@@ -1,0 +1,236 @@
+---
+title: "Lista 02"
+author: "Matheus Cougias"
+date: "13/08/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Leitura dos dados
+Realiza a leitura dos dados presentes no arquivo baseDEC_Compensacoes_CEMIG2018
+```{r Leitura dados}
+  require(openxlsx)
+  dados <- read.xlsx('baseDEC_Compensacoes_CEMIG2018.xlsx')
+```
+
+
+# **RESPOSTAS QUESTÃO 01**
+### Resultados regressão linear simples (Original):
+Tendo conhecimento de que as variáveis com p-valor abaixo de 0.05 são aquelas que representam uma correlação considerável, destaquei algumas variáveis juntamente com seus p-valores, sem necessidade de adicionar o r-quadratíco já que com o p-valor já pode-se tirar conclusões. Em destaque, pode-se citar que as variáveis AE1, AE2 e DS2 são as que possuem a maior correlação com o a Compensacoes.pagas.
+
+-> Descargas.atm, com p-valor de 5.01e-05;
+
+-> AG1, com p-valor de 5.38e-10;
+
+-> AE1, com p-valor menor que 2e-16;
+
+-> AE2, com p-valor menor que 2e-16;
+
+-> DS1, com p-valor de 7.21e-13;
+
+-> DS2, com p-valor menor que 2e-16;
+
+-> AR1, com p-valor de 1.36e-12;
+
+-> Unidades.Consumidoras, com p-valor 1.36e-05.
+
+
+### Resultados regressão linear simples (Logaritmica):
+Como proposto, a mesma análise pode ser feita sobre o logaritmo do valor das Compensações.pagas. Assim pode-se considerar que as variáveis AE1, AE2, DS1, DS2, AR1 e Unidades.Consumidoras são as que possuem a maior correlação com o a log(Compensacoes.pagas). A diferença é visível ao compararmos os resultados dados pela escala original e a escala logarítimica.
+
+-> Descargas.atm, com p-valor de 4.64e-07;
+
+-> AG1, com p-valor de 3.63e-12;
+
+-> AE1, com p-valor menor que 2e-16;
+
+-> AE2, com p-valor menor que 2e-16;
+
+-> DS1, com p-valor menor que 2e-16;
+
+-> DS2, com p-valor menor que 2e-16;
+
+-> AR1, com p-valor menor que 2e-16;
+
+-> grupos2, com p-valor de 0.0219;
+
+-> Unidades.Consumidoras, com p-valor menor que 2e-16.
+
+
+
+# **RESPOSTAS QUESTÃO 02**
+### Ranqueamento das variáveis preditoras (Original):
+Ao utilizar o pacote exploreR, é mais fácil a visualização simultânea da relação entre a variável Compensacoes.pagas e as demais variáveis que buscamos informações. Assim, o resultado obtido na primeira questão é reafirmado, provando que o estudo foi realizado de maneira correta. As variáveis DS2, AE1 e AE2 tiveram, respectivamente, os p-valores 1.234e-28, 1.138e-17 e 1.224e-17 e se mostraram as principais variáveis preditoras.
+
+### Ranqueamento das variáveis preditoras (Logaritmica):
+Da mesma maneira, os resultados obtidos para a função logaritmica foram silimares ao apresentados anteriormente, onde as variáveis DS2, DS1, AE1 e AE2 se destacaram com seus p-valores 2.268e-32, 1.170e-31, 1.294e-29 e 8.918e-28 respectivamente
+
+
+
+## Modelos de regressão linear simples (ESCALA ORIGINAL)
+Com os dados já carregados pelo RStudio, será feita uma análise da regressão linear simples para obter a correlação entre os valores apresentados pela variável Compensacoes.Pagas e outras variáveis de interesse propostas pelo trabalho.
+```{r original x Volume.chuva}
+  modelo <- lm(Compensacoes.Pagas ~ Volume.chuva, data=dados)
+  summary(modelo)
+```
+
+```{r original x Descargas.atm}
+  modelo <- lm(Compensacoes.Pagas ~ Descargas.atm, data=dados)
+  summary(modelo)
+```
+
+```{r original x Vento}
+  modelo <- lm(Compensacoes.Pagas ~ Vento, data=dados)
+  summary(modelo)
+```
+
+```{r original x umidade}
+  modelo <- lm(Compensacoes.Pagas ~ umidade, data=dados)
+  summary(modelo)
+```
+
+```{r original x temperatura}
+  modelo <- lm(Compensacoes.Pagas ~ temperatura, data=dados)
+  summary(modelo)
+```
+
+```{r original x AG1}
+  modelo <- lm(Compensacoes.Pagas ~ AG1, data=dados)
+  summary(modelo)
+```
+
+```{r original x AE1}
+  modelo <- lm(Compensacoes.Pagas ~ AE1, data=dados)
+  summary(modelo)
+```
+
+```{r original x AE2}
+  modelo <- lm(Compensacoes.Pagas ~ AE2, data=dados)
+  summary(modelo)
+```
+
+```{r original x VC1}
+  modelo <- lm(Compensacoes.Pagas ~ VC1, data=dados)
+  summary(modelo)
+```
+
+```{r original x DS1}
+  modelo <- lm(Compensacoes.Pagas ~ DS1, data=dados)
+  summary(modelo)
+```
+
+```{r original x DS2}
+  modelo <- lm(Compensacoes.Pagas ~ DS2, data=dados)
+  summary(modelo)
+```
+
+```{r original x AR1}
+  modelo <- lm(Compensacoes.Pagas ~ AR1, data=dados)
+  summary(modelo)
+```
+
+```{r original x grupos2}
+  modelo <- lm(Compensacoes.Pagas ~ grupos2, data=dados)
+  summary(modelo)
+```
+
+```{r original x Unidades.Consumidoras}
+  modelo <- lm(Compensacoes.Pagas ~ Unidades.Consumidoras, data=dados)
+  summary(modelo)
+```
+
+
+
+
+## Modelos de regressão linear simples (ESCALA ORIGINAL)
+Da mesma maneira, pode-se aplicar o logaritmo para analisar também os valores apresentados da correlação.
+```{r log x Volume.chuva}
+  modelo <- lm(log(Compensacoes.Pagas) ~ Volume.chuva, data=dados)
+  summary(modelo)
+```
+
+```{r log x Descargas.atm}
+  modelo <- lm(log(Compensacoes.Pagas) ~ Descargas.atm, data=dados)
+  summary(modelo)
+```
+
+```{r log x Vento}
+  modelo <- lm(log(Compensacoes.Pagas) ~ Vento, data=dados)
+  summary(modelo)
+```
+
+```{r log x umidade}
+  modelo <- lm(log(Compensacoes.Pagas) ~ umidade, data=dados)
+  summary(modelo)
+```
+
+```{r log x temperatura}
+  modelo <- lm(log(Compensacoes.Pagas) ~ temperatura, data=dados)
+  summary(modelo)
+```
+
+```{r log x AG1}
+  modelo <- lm(log(Compensacoes.Pagas) ~ AG1, data=dados)
+  summary(modelo)
+```
+
+```{r log x AE1}
+  modelo <- lm(log(Compensacoes.Pagas) ~ AE1, data=dados)
+  summary(modelo)
+```
+
+```{r log x AE2}
+  modelo <- lm(log(Compensacoes.Pagas) ~ AE2, data=dados)
+  summary(modelo)
+```
+
+```{r log x VC1}
+  modelo <- lm(log(Compensacoes.Pagas) ~ VC1, data=dados)
+  summary(modelo)
+```
+
+```{r log x DS1}
+  modelo <- lm(log(Compensacoes.Pagas) ~ DS1, data=dados)
+  summary(modelo)
+```
+
+```{r log x DS2}
+  modelo <- lm(log(Compensacoes.Pagas) ~ DS2, data=dados)
+  summary(modelo)
+```
+
+```{r log x AR1}
+  modelo <- lm(log(Compensacoes.Pagas) ~ AR1, data=dados)
+  summary(modelo)
+```
+
+```{r log x grupos2}
+  modelo <- lm(log(Compensacoes.Pagas) ~ grupos2, data=dados)
+  summary(modelo)
+```
+
+```{r log x Unidades.Consumidoras}
+  modelo <- lm(log(Compensacoes.Pagas) ~ Unidades.Consumidoras, data=dados)
+  summary(modelo)
+```
+
+
+## Ranqueamento das variáveis preditoras (Original)
+Utilizando o pacote exploreR, será feito o ranqueamento das variáveis preditoras.
+```{r ranqueamento original}
+  require(exploreR)
+  resultadoOriginal <- masslm(dados, "Compensacoes.Pagas", ignore = c("Codigo", "DSC_Conj_N", "lnDEC", "DEC.ANEEL", "DEC.Limite", "FEC.ANEEL", "FEC.Limite"))
+```
+
+## Ranqueamento das variáveis preditoras (Logaritmica)
+Utilizando o pacote exploreR, será feito o ranqueamento das variáveis preditoras.
+```{r ranqueamento log}
+  require(exploreR)
+  dados$log <- log(dados$Compensacoes.Pagas)
+  resultadoLog <- masslm(dados, "log", ignore = c("Codigo", "DSC_Conj_N", "lnDEC", "DEC.ANEEL", "DEC.Limite", "FEC.ANEEL", "FEC.Limite", "Compensacoes.Pagas"))
+```

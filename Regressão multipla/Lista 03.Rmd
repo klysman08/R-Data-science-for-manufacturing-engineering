@@ -1,0 +1,80 @@
+---
+title: "Lista 03"
+author: "Matheus Cougias e Klysman Rezende"
+date: "17/08/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Leitura dos dados
+Inicialmente é feita a leitura dos dados do arquivo txt, mas como pode-se perceber, algumas informações presentes no arquivo não nos interessa, além de que a leitura do mesmo não gera uma "tabela" de dados, e sim uma grande tabela com somente uma coluna e uma grande quantidade de linhas. Dessa maneira, também é realizada a seleção de quais dados serão necessários na análise. Realizei três testes para definir qual a melhor maneira de realizar a leitura dos dados, decidindo utilizar o operador "delim", que quebrou o arquivo em TABs e quebras de linha.
+
+Realizei a leitura do arquivo através do "delim", que gerava basicamente um vetor gigante com todas as informações do arquivo .txt. Em seguida, realizei o corte das informações que não eram relevantes para a análise, ou seja, o texto explicado inicial do arquivo (as 5 primeiras linhas do mesmo). Assim, fiz a seleção de quais eram os índices (nomes de coluna) que seriam retirados e também dos valores. Montei uma matriz relacionando os valores de acordo com o índice que ele representa.
+
+Como nem todas as variáveis devem ser analizadas, realizei também o corte de algumas colunas desnecessárias.
+
+```{r leituraDados}
+ #require(tidyverse)
+ #require(readtext)
+ #dados1 <- readLines("boston_corrected.txt")
+ #dados2 <- readtext("boston_corrected.txt")
+ arquivo <- read.delim("boston_corrected.txt")
+ arquivo <- arquivo$http...lib.stat.cmu.edu.datasets.boston_corrected.txt[5:10651]
+ indices <- arquivo[1:21]
+ 
+ arquivo <- arquivo[22:10647]
+ valores <- as.numeric(arquivo)
+
+ dados <- matrix(valores, ncol = 21, byrow = TRUE)
+ 
+ colnames(dados) <- indices
+
+ dados <- data.frame(dados)
+ 
+ dados <- dados[c(7, 9 : 21)]
+```
+
+
+
+## Análise descritiva da variável resposta
+Com a análise do sumário da variável resposta MEDV, temos que a média apresentada para seu valor é de 22.53, com o menor valor sendo de 5.00 e o valor máximo 50.00. Através do histograma e o boxplot, percebe-se que a maior parte dos valores apresentados estão na faixa entre 15 a 25. Ainda no boxplot, existe uma quantidade considerável de pontos fora do intervalo de 0.25 a 0.75, prncipalmente acima do valor 40.00, que não necessariamente são outliers.          
+```{r Analise descritiva}
+ summary(dados$MEDV)
+ hist <- hist(dados$MEDV, xlab = "MEDV", ylab = "Frequência", main = "Histograma")
+ boxplot <- boxplot(dados$MEDV, xlab = "MEDV", ylab = "Valor", main = "Boxplot")
+```
+
+
+
+## Gráfico de correlação linear
+Através da leitura do gráfico de correlação linear entre a variável MEDV (valor mediano das residências), pode-se perceber que existe uma forte correlação negativa com a variável LSTAT (porcentagem de população de baixa renda), que é provado logicamente com o fato das variáveis representarem aspectos contrários da população. Por outro lado, a variável RM (número médio de quartos por habitação) possui uma forte correlação positiva com a variável resposta. Nas demais variáveis a correlação não se mostra tão presente, apesar de que em sua maioria ela seja levemente negativa.
+```{r Grafico}
+ require(corrplot)
+ corMat <- cor(dados)
+ corrplot(corMat, method = "ellipse", type = "upper", order = "AOE", diag=FALSE, addgrid.col=NA, outline=TRUE)
+```
+
+
+
+## Regressão linear simples
+Aplicando a regressão linear simples com o pacote exploreR, temos a confirmação dos resultados encontrados no tópico anterior. Todas as variáveis possuem um p-valor considerável, mostrando que existe uma relação entre elas e a variável resposta. Outro resultado afirmado é dado pelo R², confirmando que as variáveis RM e LSTAT são as que melhor explicam os resultados gerados em MEDV.
+```{r Simples}
+ require(exploreR)
+ require(knitr)
+ reg_simples <- masslm(dados, "MEDV")
+ print(reg_simples)
+```
+
+
+
+## Regressão linear múltipla
+```{r Multipla}
+ reg_multipla <- lm(MEDV ~ ., data = dados)
+ reg_multipla <- step(reg_multipla)
+ summary(reg_multipla)
+ 
+ plot(reg_multipla, lty=0, pch=19, col="green")
+```
