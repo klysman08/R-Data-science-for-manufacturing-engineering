@@ -1,6 +1,6 @@
 ---
 title: "Lista 03"
-author: "Matheus Cougias e Klysman Rezende"
+author: "Klysman Rezende e Matheus Cougias"
 date: "17/08/2020"
 output: html_document
 ---
@@ -71,10 +71,74 @@ Aplicando a regressão linear simples com o pacote exploreR, temos a confirmaç�
 
 
 ## Regressão linear múltipla
+Conjunto de váriaveis que ajudam a capturar informações dos residuos para otimizar o modelo e sua explicação.
+Cada variável adicionada ao modelo aumenta uma dimensão, sendo representado por um gráfico tridimensional, representando por planos(em casos de 2 variaveis independentes VI)
+
+Os resíduos serão dados pela distância entre cada cponto e o plano.
+
+Os coeficientes só devem ser interpretados quando são estatisticamente difenretes de zero. Isso é analisado por um teste de hipoteses(test-t) e gera um valor de p.
+
+Devemos nos lembrar que nem sempre o coeficiente maior em uma das variaveis siginifica maior relavancia para explicar o modelo pois as medidas(unidades) podem ser diferentes.
+
+
+Manter o beta0 no modelo implica ter um R2 maior, o que promove beneficios computacionais, principalmente no que diz respeito a regressões multiplas. O problema de otimização neste caso se torna mais eficiente.Porém, há situações que é interessante remove-lo, dependendo da física do problema (ex: quando x é zero, y também é zero).
+
+Em alguns casos, mesmo com pvalor alto, a variavel pode não ser intuitiva no mundo real, explicativa. 
+
+O R quadrado ajustado pondera a quantidade de variasveis no modelo. analizando se a inserção de novos dados ajuda ou atrapalha a explição do modelo.
+
+
+Para analises de regressão linear múltipla, o ideal é manter um modelo enxuto. Reduzir gradativamente a complexidade pela retirada de variaveis.Assim podemos aos poucos corrigir a Colinearidade (explica quando há pares de variaveis) e Multicolinearidade (relação linear com outras variaveis)#Diagnostico de multicolinearidade 
+
+## É quando uma variavel tem dependencia com uma ou mais variaveis dentro do banco de dados
+
+## Uma das maneiras para ajustar o modelo na multicolinearidade é retirar aquelas variaveis cujo Pvalor é mais alto, eliminando assim as mesmas variaveis que não agregam informações ao modelo
+
+```{r Multicolinearidade}
+require(car)
+modelo <- lm(MEDV ~ ., data = dados)
+
+
+## Caso o VIF seja maior que 5 (ou maior que 10) há forte evidencia de multicolinearidade
+
+vif(modelo)
+
+1 - 1/vif(modelo)
+
+modeloVIF <- lm(TAX ~ CRIM + ZN + INDUS + CHAS + NOX + RM + AGE + DIS + RAD + B + LSTAT, data = dados)
+
+summary(modeloVIF)
+
+```
+
 ```{r Multipla}
+#Seleção automatica do modelo
  reg_multipla <- lm(MEDV ~ ., data = dados)
  reg_multipla <- step(reg_multipla)
  summary(reg_multipla)
  
- plot(reg_multipla, lty=0, pch=19, col="green")
+ 
+ 
+ ## Para remover o Intercepdo do modelo: lm(MEDV ~ -1 + Variaveis)
 ```
+
+``` {r AnaliseResiduos}
+
+plot(reg_multipla, lty=0, pch=19, col="purple")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
