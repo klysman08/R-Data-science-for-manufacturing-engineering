@@ -1,0 +1,218 @@
+---
+title: "Lista 04"
+author: "Matheus Cougias e Klysman Rezende"
+date: "27/08/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Leitura de arquivo
+Realiza a leitura dos dados presentes no arquivo Base_DEA_valores_medios_2014-2016.csv. A função read.csv2 foi utilizada devido ao tipo de separador presente no arquivo e algumas das colunas foram retiradas pois não são de interesse para análise.
+
+```{r leitura}
+  dados <- read.csv2('Base_DEA_valores_medios_2014-2016.csv')
+  dados <- dados[4:11]
+```
+
+
+
+
+## Análise exploratória dos dados
+Como início da análise exploratória dos dados, foi feito um histograma para ter ideia de como funciona a distribuição da variável resposta. Pode-se perceber uma tendência de distribuição exponencial nos dados, pois os as colunas do histograma decrescem de tamanho da direção do eixo X positivo. Uma teoria provável para a próxima etapa será aplicar um logaritmo na variável PMSO, para tentar corrigir esse comportamento exponencial da variável.
+
+Para facilitar uma análise das possíveis situações dos dados, foram anexadas à base de dados colunas que representam o logaritmo das variáveis preditoras, e também foi feita uma cópia da base de dados, alterando os valores do PMSO para o logaritmo da mesma. A partir da análise dos gráficos gerados comparando tanto as situações da variável resposta quanto as variáveis preditoras em logaritmo, é perceptivel uma maior linearidade entre os dados quando ambos os lados estão em logaritmo, exceto na variável rsub, onde a maior linearidade dos dados está na situação onde a variável preditora está em escala log e PMSO está na escala original. Por questão de estética, foram deixados somente os gráficos onde a distribuição se mostrou mais padronizada.
+
+
+```{r analise exploratoria}
+require(packHV)
+require(exploreR)
+require(corrplot)
+
+hist_boxplot(dados$PMSOaj, main="Histograma", xlab="PMSO", ylab="Frequência", col="light green")
+rug(dados$PMSOaj)
+
+corMat <- cor(dados, method="spearman")
+corrplot(corMat, method = "ellipse", type="upper", order="AOE", 
+          diag=FALSE, addgrid.col=NA, outline=TRUE)
+
+dados$logrsub    <- log(dados$rsub+1)
+dados$logrdist_a    <- log(dados$rdist_a)
+dados$logralta    <- log(dados$ralta+1)
+dados$logmponderado    <- log(dados$mponderado)
+dados$logcons    <- log(dados$cons)
+dados$logCHIaj    <- log(dados$CHIaj+1)
+dados$logPNTaj    <- log(dados$PNTaj+1)
+
+dados2 <- dados[2:15]
+dados2$logPMSO <- log(dados$PMSOaj)
+  
+
+plot(PMSOaj ~ logrsub, data=dados, pch=19, col="blue")
+
+plot(logPMSO ~ logrdist_a, data=dados2, pch=19, col="blue")
+
+plot(logPMSO ~ logralta, data=dados2, pch=19, col="blue")
+
+plot(logPMSO ~ logmponderado, data=dados2, pch=19, col="blue")
+
+plot(logPMSO ~ logcons, data=dados2, pch=19, col="blue")
+
+plot(logPMSO ~ logPNTaj, data=dados2, pch=19, col="blue")
+
+plot(logPMSO ~ logCHIaj, data=dados2, pch=19, col="blue")
+
+```
+
+
+
+
+## Modelo de regressão linear múltipla
+Ainda com a ideia de que tanto a base onde a variável resposta está na base original, quanto na escala log devem ser testadas, foi realizada uma regrassão linear múltipla, no objetivo de identificar quais realmente seriam as variáveis que melhor representam os dados originais. Quanto comparados os resíduos gerados pelas bases, a que o PMSO está em escala original, os resíduos geram uma distribuição totalmente confusa, onde existem diversos pontos fora da normal tanto em valores pequenos quanto em valores mais altos no gráfico.
+
+Já no caso da regressão linear múltipla aplicada sobre a base de dados com log de PMSO, os resultados se mostraram mais satisfatórios, mantendo o nível de R² próximo de 0,99 e normalizando um pouco mais os resíduos gerados e deixando mais padronizada a curva desses resíduos. Dessa maneira, o modelo a ser utilizado tomará como variáveis: logPMSO, rsub, rdist_a, cons, PNTaj, CHIaj, logralta, logmponderado e logcons.
+
+```{r RLM}
+require(car)
+
+modelo <- lm(PMSOaj ~ ., data = dados)
+modelo <- step(modelo)
+summary(modelo)
+plot(modelo)
+
+modelo <- lm(logPMSO ~ ., data = dados2)
+modelo <- step(modelo)
+summary(modelo)
+plot(modelo)
+```
+
+
+
+
+
+## Predizendo o PMSO utilizando a base de dados original
+Utilizando a base de dados original, o R² preditivo encontrado foi de 0.97, podendo ser considerada como uma boa base para predizer os valores do ano de 2017.
+
+Pela análise da árvore para essa base de dados, o valor do R² preditivo decresce para 0.6276, independente para o valor utilizado como maxdepth, mostrando que o modelo não consegue prever corretamente dados futuros para a variável PMSO.
+```{r predizendo}
+require(rpart)
+require(rpart.plot)
+dados <- dados[1:8]
+y    <- dados$PMSOaj
+yhat <- rep(NA, nrow(dados))
+
+for(cont in 1:nrow(dados)){
+   modelo <- lm(PMSOaj ~ ., data=dados[-cont,])
+   
+   yhat[cont] <- predict(modelo, newdata=dados[cont,])
+}
+
+plot(yhat ~ y, pch=19, col="blue")
+abline(a=0, b=1, lwd=2, col="red")
+
+R2pred <- 1 - sum( (y-yhat)^2 )/sum( (y-mean(y))^2 )
+print(R2pred)
+
+
+
+modelo <- rpart(PMSOaj ~  rsub + rdist_a + ralta + mponderado + cons + PNTaj + CHIaj,  data=dados)
+ 
+rpart.plot(modelo)
+
+y    <- dados$PMSOaj
+yhat <- rep(NA, nrow(dados))
+
+for(cont in 1:nrow(dados)){
+ modelo <- rpart(PMSOaj ~  rsub + rdist_a + ralta + mponderado + cons + PNTaj + CHIaj, data=dados[-cont,],
+            control = rpart.control(maxdepth=2))
+   
+ yhat[cont] <- predict(modelo, newdata=dados[cont,])
+}
+ 
+plot(yhat ~ y, pch=19, col="blue")
+abline(a=0, b=1, lwd=2, col="red")
+ 
+R2pred <- 1 - sum( (y-yhat)^2 )/sum( (y-mean(y))^2 )
+print(R2pred)
+```
+
+
+
+
+
+## Predizendo o PMSO utilizando a base de dados do modelo mais factível
+Pelo fato do R² preditivo da base original já ser extremamente alto, um pequeno acréscimo pode ser considerado como um ganho. Com o modelo encontrado na primeira parte do trabalho, o R² preditivo gerado foi de 0.9763, melhor que quando comparado ao resultado da base original. Aliado a esse melhor R² preditivo, o ganho também se dá com o comportamento mais padronizado dos resíduos desse segundo modelo, já que o comportamento dos resíduos originalmente gera uma solução não factivel para o problema.
+
+O resultado encontrado com a aplicação da árvore também é mais satisfatório que na utilização da base original de dados. O R² preditivo tem um acréscimo para 0.9089, prevendo melhor os valores que a base original.
+```{r}
+y    <- dados2$logPMSO
+yhat <- rep(NA, nrow(dados))
+
+for(cont in 1:nrow(dados2)){
+   modelo <- lm(logPMSO ~ rsub + rdist_a + cons + PNTaj + CHIaj + logralta + logmponderado + logcons, data=dados2[-cont,])
+   
+   yhat[cont] <- predict(modelo, newdata=dados2[cont,])
+}
+
+plot(yhat ~ y, pch=19, col="blue")
+abline(a=0, b=1, lwd=2, col="red")
+
+R2pred <- 1 - sum( (y-yhat)^2 )/sum( (y-mean(y))^2 )
+print(R2pred)
+
+
+
+modelo <- rpart(logPMSO ~ rsub + rdist_a + cons + PNTaj + CHIaj + logralta + logmponderado + logcons, data=dados2)
+ 
+rpart.plot(modelo)
+
+y    <- dados2$logPMSO
+yhat <- rep(NA, nrow(dados2))
+
+for(cont in 1:nrow(dados2)){
+ modelo <- rpart(logPMSO ~ rsub + rdist_a + cons + PNTaj + CHIaj + logralta + logmponderado + logcons, data=dados2[-cont,],
+            control = rpart.control(maxdepth=3))
+   
+ yhat[cont] <- predict(modelo, newdata=dados2[cont,])
+}
+ 
+plot(yhat ~ y, pch=19, col="blue")
+abline(a=0, b=1, lwd=2, col="red")
+ 
+R2pred <- 1 - sum( (y-yhat)^2 )/sum( (y-mean(y))^2 )
+print(R2pred)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
