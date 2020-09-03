@@ -1,0 +1,62 @@
+---
+title: "Lista 05"
+author: "Matheus Cougias e Klysman Rezende"
+date: "31/08/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Leitura do arquivo
+Realiza a leitura do arquivo em formato .csv, onde as 9 primeiras variáveis são valores decimais e a variável resposta (y) é binária. Assim, foi necessário fazer a alteração dessa variável para binário, pois o R a considerou como valores inteiros de 0 ou 1. Também foram necessárias alterações nas demais variáveis, já que elas não foram consideradas como factor, e sim como números.
+```{r Leitura}
+dados <- read.csv("cancer.csv")
+dados$y <- as.factor(dados$y)
+```
+
+
+## Análise inicial
+A partir do carregamento dos dados, já é possíve realizar uma análise inicial que os dados apresentam. A primeira característica dos dados nos mostra que a proporção de câncer benigno estudado foi cerca de duas vezes maior que a de malignos (65,52% e 34,38% respectivamente). Assim, busca-se identificar o perfil que apresenta melhor probabilidade do câncer ser benigno, comparando os valores apresentados para cada variável.
+
+Sabendo disso, foi realizada a montagem de gráficos que comparam cada intervalo das variáveis (x1, x1, ..., x9) com a proporção de câncer benigno para aquele intervalo. Em todas as variáveis foi apontado que o valor que possui essa maior proporção está no intervalo 0,1 e 0,2. Por outro lado, o intervalo que apresenta maior proporção de câncer maligno foi o de 0.8 e 1 para quase todas as 9 variáveis estudadas.
+```{r Analise Inicial}
+table(dados$y)/sum( table(dados$y))
+
+plot(y ~ x1, data = dados, ylab="Câncer benigno?")
+plot(y ~ x2, data = dados, ylab="Câncer benigno?")
+plot(y ~ x3, data = dados, ylab="Câncer benigno?")
+plot(y ~ x4, data = dados, ylab="Câncer benigno?")
+plot(y ~ x5, data = dados, ylab="Câncer benigno?")
+plot(y ~ x6, data = dados, ylab="Câncer benigno?")
+plot(y ~ x7, data = dados, ylab="Câncer benigno?")
+plot(y ~ x8, data = dados, ylab="Câncer benigno?")
+plot(y ~ x9, data = dados, ylab="Câncer benigno?")
+```
+
+
+## Ajuste modelo logistico univariado
+Dessa maneira, já com a ideia em mente de quais valores provavelmente serão utilizados para traçar o perfil desejado, um modelo de regressão logístia é aplicado ao problema, desingnando realmente quais serão os intervalos adotados. Lembrando que nesse primeiro teste todas as variáveis serão utilizadas, sem a seleção de quais realmente são relevantes para o problema. 
+
+A regressão logística identifica que todas as variáveis fazem com que a tendência do câncer gerado seja maligno, quanto maior for o seu valor, por estarem descritas como variáveis contínuas (numéricas). Isso demonstra que a análise efetuada no último tópico é verdadeira, onde para que o valor resultante seja câncer benigno, TODAS as variáveis devem estar próximas do valor zero (que no caso, o único possível é o 0,1).
+
+As variáveis que mais afetam a variação do valor de y são aquelas com o maior valor de Estimate (ou então menor valor de Pr(>|z|)). Neste caso, as variáveis mais relevantes pro problema são: x1, x4, x6 e x7.
+```{r Regressao Logistica}
+modelo <- glm(y ~ ., family="binomial", data=dados)
+summary(modelo)
+```
+
+
+## Ajuste utilizando a função step()
+Considerando que algumas variáveis podem predizer o valor das outras, podemos aplicar a função step() para diminuir o tamanho do problema, ou seja, fazer com que o número de variáveis analisadas diminua. Dessa maneira, as variáveis que foram mantidas ao final dos passos do step foram x1, x3, x4, x6, x7, x8 e x9. Todas as variáveis tidas como relevantes para o problema no tópico anterior foram mantidas e continuam sendo as que mais possuem o poder de alterar o valor final de y.
+
+```{r Step}
+modelo <- glm(y ~ ., family="binomial", data=dados)
+modelo <- step(modelo)
+summary(modelo)
+
+valor = 604.00
+probStep = exp(valor)/(1+exp(valor))
+```
