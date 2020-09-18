@@ -1,0 +1,109 @@
+---
+title: "lista6"
+author: "Klysman Rezende e Matheus Cougias"
+date: "09/09/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Leitura dos dados
+Realiza a leitura do banco de dados corretamente, além de renomear as colunas de acordo com o especificado na fonte.
+```{r Leitura}
+require(readr)
+require(pROC)
+require(rpart)
+require(rpart.plot)
+require(randomForest)
+require(dplyr)
+
+#occupancy <- read.csv("datatraining.txt")[,-1]
+adult <- read_csv("adult.data", col_names = FALSE)
+adult <- adult[-19610,]
+adult=adult %>% mutate_if(is.character, as.factor)
+
+colnames(adult) <- c('Idade', 'Trabalho', 'Fnlwgt', 'Escolaridade', 'Num_escolaridade', 'Est_Civil', 'Profissao', 'Relacionamento', 'Cor', 
+                     'Sexo', 'Ganhos', 'Perdas', 'Horas_semanais', 'Pais', 'Renda')
+```
+
+
+## Análise Exploratória
+Através de uma análise básica da relação entre a variável de renda e as demais variáveis, percebe-se que um perfil "otimista" de pessoa que tenha renda acima de 50 mil pode ser dado por: homem branco norte-americano casado, com alto nível de escolaridade e idade entre 40 e 50 anos, sendo dono de sua própria empresa, além de trabalhar entre 40 e 50 horas semanais. Por questão de economia de espaço no relatório, os gráficos estão em comentário. Além disso, temos que 24.08% das pessoas amostradas no banco de dados representam aquelas com renda acima de 50 mil.
+```{r Analise}
+#plot(Idade ~ Renda, data=adult)
+#plot(Renda ~ Trabalho, data=adult)
+#plot(Fnlwgt ~ Renda, data=adult)
+#plot(Renda ~ Escolaridade, data=adult)
+#plot(Num_escolaridade ~ Renda, data=adult)
+#plot(Renda ~ Est_Civil, data=adult)
+#plot(Renda ~ Profissao, data=adult)
+#plot(Renda ~ Relacionamento, data=adult)
+#plot(Renda ~ Cor, data=adult)
+#plot(Renda ~ Sexo, data=adult)
+#plot(Ganhos ~ Renda, data=adult)
+#plot(Perdas ~ Renda, data=adult)
+#plot(Horas_semanais ~ Renda, data=adult)
+#plot(Renda ~ Pais, data=adult)
+table(adult$Renda)/sum( table(adult$Renda) )
+```
+
+
+## Modelo Logístico
+A função step realizou o corte de somente uma variável do problema (Num_escolaridade), mostrando que as variáveis não possuem um grau de relacionamento muito grande. Como analizado anteriormente, dentro de cada variável pode-se observar qual "padrão" gerará um melhor valor de modo que a probabilidade da renda do indivíduo ser acima de 50 mil seja maior. As características retiradas da análise exploratória para que o indivíduo possua maior probabilidade de renda acima de 50 mil é similar ao retirado do resultado da regressão logística.
+A área sobre a curva ROC utilizando a regressão logística é de 90.89%, podendo ser considerado como alto.
+```{r Mod_Logistico}
+dadosadul <- adult
+dadosadul <- dadosadul[dadosadul$Pais != " Holand-Netherlands" ,]
+
+modeloLog <- glm(Renda ~ .-Num_escolaridade, family=binomial, data=dadosadul)
+#modeloLog <- step(modeloLog)
+
+curvaLog <- roc(modeloLog$y, predict(modeloLog, type="response") )
+plot(curvaLog, col="red")
+curvaLog$auc
+```
+
+
+
+## Validação Modelo Logístico
+Utilizando a validação cruzada do modelo de regressão logística, a área sobre a curva ROC é de 90.30%, apresentando um resultado alto e extremamente próximo do da própria regressão.
+```{r Valid_Logistico}
+folds <- cut( seq(1,nrow(dadosadul)), breaks=10, labels=FALSE)
+folds <- sample(folds, size=length(folds))
+
+Ypredict <- rep(NA, nrow(dadosadul))
+for(fld in 1:2){
+  testIndexes <- which(folds==fld, arr.ind=TRUE)
+  modelo <- glm(Renda ~ ., family=binomial, data=dadosadul[-testIndexes,])
+  Ypredict[testIndexes] <- predict(modelo, newdata=dadosadul[testIndexes,], type="response")
+}
+roc(dadosadul$Renda, Ypredict)$auc
+```
+
+
+
+## Random Forest
+A partir da utilização do modelo de Random Forest, a área sobre a curva ROC teve um pequeno aumento para 91.05%.
+```{r Random_Forest}
+set.seed(1234)
+modeloRandom <- randomForest(Renda ~ .-Num_escolaridade, family=binomial, data=dadosadul)
+curvaRandom <- roc(dadosadul$Renda, predict(modeloRandom, type="prob")[,2] )
+plot(curvaRandom, col="dark green")
+curvaRandom$auc
+```
+
+
+## Validação Random Forest
+Assim, a validação da Random Forest objetve um resultado de 91.04% de área abaixo da curva ROC.
+```{r Validacao_Random_Forest}
+Ypredict <- rep(NA, nrow(dadosadul))
+for(fld in 1:2){
+  testIndexes <- which(folds==fld, arr.ind=TRUE)
+  modeloRF <- randomForest(as.factor(Renda) ~ ., data=dadosadul[-testIndexes,]) 
+  Ypredict[testIndexes] <- predict(modeloRF, newdata=dadosadul[testIndexes,], type="prob")[,1]
+}
+curvaValidacaoRandom <- roc(dadosadul$Renda, Ypredict)
+curvaValidacaoRandom$auc
+```
