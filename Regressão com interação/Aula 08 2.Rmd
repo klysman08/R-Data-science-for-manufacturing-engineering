@@ -1,0 +1,49 @@
+---
+title: "Aula 08"
+author: "Matheus Cougias e Klysman Rezende"
+date: "18/09/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Leitura de dados
+Neste banco de dados temos a quantidade de animais mortos, a quantidade que foi submetida a teste, o tipo de veneno e o logaritmo da quantidade dosada.
+
+Podemos perceber uma média de animais testados bem próxima de 50 animais sendo que a maioria dos animais envenenados morreram (em boa parte dos testes). 
+```{r Leitura}
+dados <- read.csv("potency.dat", sep="\t")
+dados$Poison <- as.factor(dados$Poison)
+```
+
+## Análise Exporatória
+Pela análise de qual dos venenos seria o melhor aplicar, o veneno D apresenta uma taxa de mortes entre 20% e 100% (com média próxima a 80%), o veneno M encontra-se entre 10% e 90% (com média em 70%) e o veneno R encontra-se entre 5% e 90% (com média em 60%).
+
+No segundo gráfico, vermelho=D, azul=M e preto=R. percebemos que o veneno R foi utilizado nas doses maiores (talvez explicando o motivo da maior taxa de mortes). A melhor maneira para tirar conclusões é utilizando a regressão e analisando seus p-valores, entendendo melhor qual veneno escolher.
+```{r Analise}
+plot(Kill/Number ~ Poison, data=dados)
+
+plot(Kill/Number ~ LogDose, data=dados, pch=19, cex=1.2, col=c("red", "blue", "black")[dados$Poison])
+```
+
+
+## Regressão SEM interação
+Nesse caso, avaliaremos qual o comportamento separadamente do tipo do veneno e a dose. Para facilitar a análise, consideramos que as doses foram multiplicadas por 10.
+
+Como esperado, o logaritmo da dose possui valor positivo, mostrando que quanto maior a dose aplicada no animal, maior as chances dele morrer. Assim, a cada aumento de 0.1 na dose, temos um acréscimo de chances do animal morrer em exp(0.48277) = 62.05%.
+
+Além disso, através dos resultados existe uma tendência em escolher o veneno de tipo R para comprar, já que apresenta a maior probabilidade de matar o animal. Esse fato rebate a ideia da análise exploratória, podendo ser explicada pelo fato das diferenças entre os tamanhos das doses, já que o veneno D foi utilizado em maior quantidade.
+```{r Modelo1}
+modelo <- glm(cbind(Kill, Number-Kill) ~ Poison + I(LogDose*10), data=dados, family=binomial)
+summary(modelo)
+```
+
+
+## Regressão COM interação
+Através da nova análise, encontramos os efeitos marginais do M e do R, além do efeito da dose, todos encontrados na regressão anterior. Será mais interessante analsiar nesse modelo os valores encontrados para iteração entre o Veneno e o LogDose. Ainda assim encontramos que o veneno do tipo R continua sendo o mais aconselhável a comprar.
+```{r Modelo2}
+modelo <- glm(cbind(Kill, Number-Kill) ~ Poison + I(LogDose*10) + Poison:I(LogDose*10), data=dados, family=binomial)
+summary(modelo)
+```

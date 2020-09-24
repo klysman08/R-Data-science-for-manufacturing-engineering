@@ -1,0 +1,41 @@
+---
+title: "Regressao Multinomial"
+author: "Marcelo Azevedo Costa"
+date: "5 de setembro de 2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+
+## Leitura da base de dados
+```{r leitura}
+dados <- read.csv("mlogit.csv")
+dados$brand <- as.factor(dados$brand)
+levels(dados$brand) <- c("A", "B", "C")
+dados$male <- 1 - dados$female
+```
+
+## Ajuste do Modelo Multinomial
+```{r multinomial, warning=FALSE}
+ require(mlogit)
+ ## Coloca os dados no formato da funcao "mlogit"
+ mldata       <- mlogit.data(dados, choice="brand", shape="wide")
+ mlogit.model <- mlogit(brand ~ 1|female + age, data = mldata, reflevel="A")
+ summary(mlogit.model)
+```
+
+## Previsao do Modelo Multinomial
+```{r PredicaoProbabilidades}
+ saida <- predict(mlogit.model, 
+                  newdata=data.frame(female=rep(0, 3), 
+                                        age=rep(35, 3)))
+ print(saida)
+```
+
+
+
+

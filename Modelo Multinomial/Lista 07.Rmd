@@ -1,0 +1,106 @@
+---
+title: "Lista 07"
+author: "Matheus Cougias e Klysman Rezende"
+date: "14/09/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Leitura da base de dados
+Realiza a leitura da base de dados, que possui 38 observações e 7 variáveis, sendo a Region a variável a ser analisada. As variáveis Sabor e Qualidade serão desconsideradas na análise.
+```{r Leitura}
+dados <- read.csv("wine.csv")
+dados = subset(dados,select = -c(Flavor, Quality))
+names(dados)[names(dados) == 'Region.y.'] <- 'Region'
+dados$Region <- as.factor(dados$Region)
+```
+
+
+## Análise exploratória
+Observando a base de dados, percebe-se que existem três possíveis regiões de produção de vinho, chamadas de região: 1, 2 e 3. Através de uma análise inicial, percebe-se que a região 3 destaca-se das demais pelos valores mais altos no Aroma e no Corpo, enquanto a região 2 se diferencia das demais por uma variedade maior de Claridade.
+```{r Analise}
+plot(Clarity ~ Region, data=dados)
+#plot(Aroma ~ Region, data=dados)
+plot(Body ~ Region, data=dados)
+plot(Oakiness ~ Region, data=dados)
+```
+
+
+## Modelo Multinomial
+Dessa maneira, inicia-se a utilização do pacote mlogit repassando para ele a base de dados, além de selecionar qual será a variável resposta do problema. No segundo passo, foi escolhida a região 1 como base de comparação dos resultados da regressão. Dessa maneira, pode-se observar como cada uma das características se comporta de acordo com a região em que o vinho é produzida, então:
+-> Claridade: Nessa característica pode-se observar a maior dissiparidade entre as regiões, onde a região 3 possui uma tendência muito acima das demais de produzir um vinho com a variável Claridade mais alta;
+-> Aroma: Novamente a região 3 destaca-se em mais uma variável, onde os vinhos dessa região possuem maiores valores para a variável;
+-> Corpo: Entre as variáveis, a mais "equilibrada" foi o Corpo do vinho, com valores extremamente próximos. Nesse caso, a região 3 possui maior possibilidade de produzir vinhos com sua variável Corpo com valores mais altos;
+-> Carvalho: Se diferenciando um pouco das demaisv variáveis, o carvalho da região 3 tem uma tendência a valores um pouco menores um relação às demais regiões. Nessa variável a região 2 tem maior possibilidade de valores mais altos.
+```{r Modelo}
+require(mlogit)
+mdados <- mlogit.data(dados, choice="Region", shape="wide")
+mdados.model <- mlogit(Region ~ 1|Clarity + Aroma + Body + Oakiness, data = mdados, reflevel=1)
+summary(mdados.model)
+```
+
+
+## Previsão
+Somente para fim de testes, tomamos alguns valores médios, altos e baixos, respectivamente, para gerar as probabilidades das regiões terem produzido o vinho com as seguintes características (dentro dos limites encontrados na Análise Exploratória):
+-> Claridade 0.75, Aroma 6, Corpo 4.5, Carvalho 4.5 = Região 1 (48.17%), Região 2 (50.34%), Região 3 (1.47%)
+-> Claridade 0.5, Aroma 4, Corpo 3, Carvalho 3 = Região 1 (23.85%), Região 2 (76.16%), Região 3 (0.00%)
+-> Claridade 1, Aroma 6, Corpo 4.5, Carvalho 4.5 = Região 1 (0.32%), Região 2 (0.12%), Região 3 (99.55%)
+```{r Previsão}
+teste1 <- predict(mdados.model, 
+                newdata=data.frame(Clarity=rep(0.75, 3), 
+                                   Aroma=rep(6, 3),
+                                   Body=rep(4.5, 3),
+                                   Oakiness=rep(4.5, 3)))
+print(teste1)
+
+teste2 <- predict(mdados.model, 
+                newdata=data.frame(Clarity=rep(0.5, 3), 
+                                   Aroma=rep(4, 3),
+                                   Body=rep(3, 3),
+                                   Oakiness=rep(3, 3)))
+print(teste2)
+
+teste3 <- predict(mdados.model, 
+                newdata=data.frame(Clarity=rep(1, 3), 
+                                   Aroma=rep(7, 3),
+                                   Body=rep(6, 3),
+                                   Oakiness=rep(6, 3)))
+print(teste3)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
