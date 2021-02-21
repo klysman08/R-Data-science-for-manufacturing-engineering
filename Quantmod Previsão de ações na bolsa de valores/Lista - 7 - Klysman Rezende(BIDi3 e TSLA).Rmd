@@ -1,0 +1,197 @@
+---
+title: "Series Temporais para analises Financeiras"
+author: "Klysman Rezende Alves Vieira"
+date: "14/02/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE }
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Aquisicao e Manipulacao de Series Financeiras
+O objetivo dessa aula é apresentar pacotes e códigos que permitam acessar dados de séries financeiras. Esses dados serão utilizados em modelo de previsão de séries temporais.
+
+## Pacote **BatchGetSymbols**
+
+```{r pacoteBatchGetSymbols, message=FALSE, warning=FALSE}
+require(BatchGetSymbols)
+
+## https://rstudio-pubs-static.s3.amazonaws.com/256128_89c5153e845e496f92913ff1ca6be211.html#:~:text=Primeiramente%20se%20instala%20o%20pacote,library(%E2%80%9Cquantmod%E2%80%9D).
+
+primeiradata <- as.Date('2017-01-01') # Year-month-day
+ultimadata   <- Sys.Date()
+
+# https://finance.yahoo.com/
+# Para consultar outras acoes verificar o 
+# simbolo (TICKER) no yahoo finance
+# ou google: "https://www.google.com/finance"
+ativos <- c("TSLA", "BIDI3.SA")
+
+
+df <- BatchGetSymbols(tickers = ativos,
+                      first.date = primeiradata,
+                      last.date = ultimadata,
+                      freq.data = 'monthly')
+# Frequency of financial data 
+# ('daily', 'weekly', 'monthly', 'yearly')
+
+# Para ver o status do dowload
+df$df.control
+
+# Para acessar os dados financeiros:
+df.tickers <- df$df.tickers
+# Banco de dados com as informacoes necessarias
+head(df.tickers)
+
+# Seleciona somente os dados da CEMIG
+bid3 <- subset(df.tickers, ticker=="BIDI3.SA")
+
+```
+
+
+## Pacote **Quantmod**
+```{r pacote_quantmod, message=FALSE, warning=FALSE}
+ require(quantmod)
+ # Especifica as datas de interesse
+ startDate = as.Date("2017-01-01") ## YYYY-MM-DD
+ endDate   = Sys.Date()            ## as.Date("2020-09-29")
+ 
+ # Nomes dos ativos
+ ativos <- c("BIDI3.SA")
+ ativos2 <- c("TSLA")
+ # Cria um novo ambiente para armazenar os dados
+ stockData <- new.env() 
+ # Obtem os dados
+ getSymbols(ativos, src="yahoo", 
+            from = startDate, to = endDate,
+            env=stockData)
+ 
+  getSymbols(ativos2, src="yahoo", 
+            from = startDate, to = endDate,
+            env=stockData)
+ 
+ bid3 <- stockData$"BIDI3.SA"
+ bid3$Data <- rownames("BIDI3.SA")
+ 
+ tesla <- stockData$"TSLA"
+ tesla$Data <- rownames("TSLA")
+
+```
+
+# Análise exploratória da Série Temporal
+```{r analiseExploratoria BANCO INTER SA 3, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+summary(bid3)
+plot(bid3$BIDI3.SA.Adjusted, type="l", 
+     ylab="BIDI3.SA adjusted" )
+ 
+chartSeries(bid3, subset=c("last 6 months",
+                            "last 3 months")[1])
+addBBands()
+chart_Series(bid3)
+
+
+
+```
+
+# Análise exploratória da Série Temporal
+```{r analiseExploratoria TESLA, message=FALSE, warning=FALSE}
+
+#summary(tesla)
+plot(tesla$TSLA.Adjusted, type="l", 
+     ylab="TSLA adjusted" )
+
+ 
+chartSeries(tesla, subset=c("last 6 months",
+                            "last 3 months")[1])
+addBBands()
+chart_Series(tesla)
+
+chartSeries(tesla, 
+            type=c("auto", 
+                   "candlesticks", 
+                   "matchsticks", 
+                   "bars",
+                   "line")[4])
+
+```
+
+
+# Processamento dos dados BANCO INTER
+```{r addMissing BANCO INTER, message=FALSE, warning=FALSE}
+ require(imputeTS) ## Imputa dados ausentes
+
+ ## Preenche os missings (NA)
+ bid3$BIDI3.SA.Adjusted <- na.interpolation(bid3$BIDI3.SA.Adjusted)
+ 
+ plot(bid3$BIDI3.SA.Adjusted, type="l", 
+     ylab="BIDI3.SA adjusted", col="blue" )
+
+```
+
+# Processamento dos dados TESLA
+```{r addMissing TESLA, message=FALSE, warning=FALSE}
+ require(imputeTS) ## Imputa dados ausentes
+
+ ## Preenche os missings (NA)
+ tesla$TSLA.Adjusted <- na.interpolation(tesla$TSLA.Adjusted)
+ 
+ plot(tesla$TSLA.Adjusted, type="l", 
+     ylab="TSLA adjusted", col="blue" )
+
+```
+
+
+# Previsao do comportamento das ações
+
+```{r previsoes, message=FALSE, warning=FALSE}
+
+ require(forecast)       ## Pacote para previsao...
+ require(nnfor)          ## Pacote com Redes Neurais
+ require(forecastHybrid) ## Modelo Híbrido
+
+ ## Funcao para calculo dos erros de previsao
+   ferro <- function(observed, predicted){
+      erro <- observed - predicted
+      MAE  <- mean( abs(erro) )
+      RMSE <- sqrt( mean(erro^2) )
+      return( c(MAE, RMSE) )
+   }
+   
+ ## Removendo um pedaço da serie para validacao BANCO INTER
+ n <- length(bid3$BIDI3.SA.Adjusted)
+ TStrain  <- bid3$BIDI3.SA.Adjusted[1:(n-15)]  
+ TStrain  <- ts(TStrain, frequency = 15,)
+ TStest   <- bid3$BIDI3.SA.Adjusted[(n-15+1):n]
+ previsao <- TStest 
+ 
+  ## Removendo um pedaço da serie para validacao TESLA
+ n2 <- length(tesla$TSLA.Adjusted)
+ TStrain2  <- tesla$TSLA.Adjusted[1:(n-15)]  
+ TStrain2  <- ts(TStrain2, frequency = 15,)
+ TStest2   <- tesla$TSLA.Adjusted[(n-15+1):n]
+ previsao2 <- TStest2
+ 
+#------------------------- Modelos -----------------------------------------------
+ 
+## ARIMA PARA PREVISÃO DO BANCO INTER
+ fit      <- auto.arima(TStrain, num.cores = 6)
+ previsao[1:15] <- forecast(fit, h=15)$"mean"
+ plot(TStest, type="l", col="blue"); lines(previsao, col="red", lty=2, lwd=2)
+ ferro(TStest, previsao)
+ 
+ 
+## ARIMA PARA PREVISÃO DA TESLA
+ fit2      <- auto.arima(TStrain2, num.cores = 6)
+ previsao2[1:15] <- forecast(fit2, h=15)$"mean"
+ plot(TStest2, type="l", col="blue"); lines(previsao2, col="red", lty=2, lwd=2)
+ ferro(TStest2, previsao2)
+ 
+
+ 
+```
+
+

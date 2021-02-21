@@ -1,0 +1,130 @@
+---
+title: "Analise Exporatoria de Dados - NT 121/2020/ANEEL"
+author: "Klysman Rezende"
+date: "11/12/2020"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Analise Exploratoria dos dados da Nota Técnica 121/2020
+
+A aula de hoje tem como objetivo analisar os dados publicados pela Agência Nacional de Energia Elétrica (*ANEEL* - **NT 121/2020**).
+
+Vamos também ajustar o modelo de regressão linear simples expresso pela equação $y_i = \beta_0 + \beta_1 \times x_i + \epsilon_i$.
+
+## Leitura dos dados
+
+Os comandos a seguir fazem a leitura a partir de um arquivo excell.
+
+```{r leituraDados, echo=TRUE, warning=FALSE, message=FALSE}
+  require(openxlsx)
+  dados <- read.xlsx("C:/Users/macos/Google Drive/2020_Disciplina_TopicosAvancados_R/2020_CP62_ANEEL/ANEEL_CP62_2020.xlsx")
+  
+  summary(dados)
+```
+
+## Analise de dados utilizando Motion Chart
+
+O resultado a seguir é mostrado no browser, mas é necessário habilitar o *Flash*.
+
+```{r motionChart, message=FALSE, warning=FALSE}
+  require(googleVis)
+
+  dados$Ano = 2020
+
+  motion <- gvisMotionChart(dados, 
+                            idvar = "DMU",
+                            timevar = "Ano")
+  
+  plot(motion)
+
+```
+
+## Analise de dados utilizando histograma e boxplot
+
+```{r histBoxplot,fig.align="center",fig.height=4.5,fig.width=4}
+ require(packHV)
+
+ summary(dados$pmso)
+ hist(dados$pmso, 
+      main = "", # titulo
+      col  = "light blue",
+      xlab = "PMSO (Pessoal, Material, Serviços e Outros)")
+ rug(dados$pmso)
+ 
+ # Histograma e boxplot no mesmo grafico
+ hist_boxplot(dados$pmso,
+              main = "", # titulo
+              col  = "light blue",
+              xlab = "PMSO")
+ rug(dados$pmso)
+
+```
+
+## Combinando codigo R para desenhar multiplas figuras
+```{r MultiplasFig, fig.align="center",fig.height=6,fig.width=8}
+
+ nomes <- names(dados)[3:8]
+
+ # Definir parametros graficos - desenho em forma de matriz
+ par( mfrow=c(2,3) ) # numero de linhas e colunas
+
+ # Loop para desenho de todas as figuras selecionadas
+ for(nm in nomes){
+    hist_boxplot(dados[,nm],
+              main = "", # titulo
+              col  = "light blue",
+              xlab = nm)
+    rug(dados[,nm])
+ }
+
+```
+
+## Analise da correlacao cruzada das variáveis
+```{r corPlot}
+  require(corrplot)
+
+  # Calculando a matrix de correlacao
+  corMat <- cor(dados[,c(3:8,9)])
+
+  # Desenhando o grafico de correlacao
+  corrplot(corMat, 
+           method = "ellipse", 
+           type="upper", 
+           order="AOE", 
+           diag=FALSE, 
+           addgrid.col=NA,
+           outline=TRUE)
+
+```
+
+# Juntando duas bases de dados
+```{r JuntaBases}
+ ambiente <- read.csv("C:/Users/macos/Google Drive/2020_Disciplina_TopicosAvancados_R/2020_CP62_ANEEL/VARIAVEIS_EXOGENAS_DEA_PBL.csv", 
+                      sep=";", na.strings="ND")
+ summary(ambiente)
+ names(ambiente)[1] <- "codigo"
+ 
+ # juntar os dois bancos de dados
+ novo <- merge(dados, ambiente, by="codigo")
+ 
+ novo <- merge(dados, ambiente, by.x="codigo",
+               by.y="codigo")
+ 
+ # Salvar o arquivo final no Excel
+ write.xlsx(novo, "DadosCompletos.xlsx")
+
+```
+
+
+
+
+
+
+

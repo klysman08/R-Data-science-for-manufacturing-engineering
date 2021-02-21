@@ -1,0 +1,386 @@
+---
+title: "Programacao Linear com lpSolve"
+author: "Klysman Rezende Alves"
+date: "02/02/2021"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r leituraDados}
+ require(openxlsx)
+ dados <- read.xlsx("ANEEL_CP62_2020.xlsx")
+
+```
+
+```{r exemploSimples}
+ require(lpSolve)
+
+ ## maximize: 1 x1 + 9 x2 + 1 x3
+ f.obj <- c(1, 9, 1)
+
+ ## subject to
+ ## 1 x1 + 2 x2 + 3 x3 <= 9
+ ## 3 x1 + 2 x2 + 2 x3 <= 15
+ f.con <- matrix (c(1, 2, 3, 
+                    3, 2, 2), nrow=2, byrow=TRUE)
+ f.dir <- c("<=", "<=")
+ f.rhs <- c(9, 15)
+
+ ## Gera a solucao
+ saida <- lp ("max", f.obj, f.con, f.dir, f.rhs)
+
+```
+
+```{r Benchmarking}
+ require(Benchmarking)
+
+ dea.plot(x = dados$pmso,
+          y = dados$mercado,
+          RTS="vrs",
+          ylab="mercado",
+          xlab="pmso", pch=19)
+ 
+ saida <- dea(X = as.matrix(dados$pmso),
+              Y = dados[,c("rede","mva","trafo","mercado","uc")],
+              RTS = "irs",
+              ORIENTATION = "in")
+ 
+ dados$DEA.SR <- saida$eff
+
+```
+
+
+
+```{r ajusteDEAlpSolve}
+
+#Função global que recebe o parametro dt
+
+
+fDEA_SR <- function(dt){
+  
+   eficiencias <- rep(NA, nrow(dt))
+   pesos       <- matrix(NA, nrow=nrow(dt), ncol=7)
+
+   for(k in 1:nrow(dt)){
+     produtos <- c("rede", "mva", "trafo", "mercado", "uc") 
+    
+     # Vetor de parametros: [pmso,rede,mva,trafo,mercado,uc,phi]
+     f.obj <- as.numeric( c(0, dt[k, produtos], 1) )
+     
+     f.con <- c(dt[k, "pmso"], rep(0,5), 0)
+     
+     f.con <- rbind(f.con, cbind(-dt[, "pmso"], dt[, produtos], 1))
+     
+     Identidade <- diag(rep(1,7))
+     
+     colnames(Identidade) <- colnames(f.con)
+     
+     f.con <- rbind(f.con, Identidade)
+     
+     #LETRA B 
+     
+     f.con <- rbind( f.con, c(-1 , 0 , 0 , 0 , 0 ,  +0.8109, 0) )
+     f.con <- rbind( f.con, c(-1 , 0 , 0 , 0 , 0 , -2.0012, 0) )
+     
+     f.con <- rbind( f.con, c(0 , -1 , 0 , 0 , 0 ,  +0.2683, 0) )
+     f.con <- rbind( f.con, c(0 , -1 , 0 , 0 , 0 , -1.2005, 0) )
+     
+     f.con <- rbind( f.con, c(0 , 0 , -1 , 0 , 0 ,  +0.0380, 0) )
+     f.con <- rbind( f.con, c(0 , 0 , -1 , 0 , 0 , -0.1527, 0) )
+     
+     f.con <- rbind( f.con, c(0 , 0 , 0 , -1 , 0 ,  +1.4007, 0) )
+     f.con <- rbind( f.con, c(0 , 0 , 0 , -1 , 0 , -29.8560, 0) )
+     
+     f.con <- rbind( f.con, c(0 , 0 , 0 , 0 , -1 ,  +0.0181, 0) )
+     f.con <- rbind( f.con, c(0 , 0 , 0 , 0 , -1 , -0.0629, 0) )
+    
+     f.dir <- c("<=", rep("<=",nrow(dt)), rep(">=",7), "<=", "<=", "<=", "<=", "<=", "<=", "<=", "<=", "<=", "<=")
+     
+     #, "<=", "<=", "<=", "<=", "<=", "<=", "<=", "<="
+     #, 0, 0, 0, 0, 0, 0, 0, 0
+     
+     f.rhs <- c(1, rep(0, nrow(dt)), rep(0, 7), 0, 0, 0 ,0, 0 ,0, 0 ,0, 0 ,0) 
+       
+     saida <- lp ("max", f.obj, f.con, f.dir, f.rhs) 
+     
+     eficiencias[k] <- saida$objval
+     pesos[k,]      <- saida$solution
+   }
+   
+   return( list(eff=eficiencias, pesos=pesos) )
+}  
+
+saida <- fDEA_SR(dados)
+
+#Nova coluna que recebe os dados gereados pela função
+dados$DEA.NEW <- saida$eff 
+saida$pesos
+
+```
+```{r ajusteDEAlpSolve}
+
+#Função Modelo_ANEEL_SR
+
+
+Modelo_ANEEL_SR <- function(dt){
+  
+   eficiencias <- rep(NA, nrow(dt))
+   pesos       <- matrix(NA, nrow=nrow(dt), ncol=7)
+
+   for(k in 1:nrow(dt)){
+     produtos <- c("rede", "mva", "trafo", "mercado", "uc") 
+    
+     # Vetor de parametros: [pmso,rede,mva,trafo,mercado,uc,phi]
+     f.obj <- as.numeric( c(0, dt[k, produtos], 1) )
+     
+     f.con <- c(dt[k, "pmso"], rep(0,5), 0)
+     
+     f.con <- rbind(f.con, cbind(-dt[, "pmso"], dt[, produtos], 1))
+     
+     Identidade <- diag(rep(1,7))
+     
+     colnames(Identidade) <- colnames(f.con)
+     
+     f.con <- rbind(f.con, Identidade)
+     
+     #LETRA B 
+     
+     f.con <- rbind( f.con, c(-1 , 0 , 0 , 0 , 0 ,  +0.8109, 0) )
+     f.con <- rbind( f.con, c(-1 , 0 , 0 , 0 , 0 , -2.0012, 0) )
+     
+     f.con <- rbind( f.con, c(0 , -1 , 0 , 0 , 0 ,  +0.2683, 0) )
+     f.con <- rbind( f.con, c(0 , -1 , 0 , 0 , 0 , -1.2005, 0) )
+     
+     f.con <- rbind( f.con, c(0 , 0 , -1 , 0 , 0 ,  +0.0380, 0) )
+     f.con <- rbind( f.con, c(0 , 0 , -1 , 0 , 0 , -0.1527, 0) )
+     
+     f.con <- rbind( f.con, c(0 , 0 , 0 , -1 , 0 ,  +1.4007, 0) )
+     f.con <- rbind( f.con, c(0 , 0 , 0 , -1 , 0 , -29.8560, 0) )
+     
+     f.con <- rbind( f.con, c(0 , 0 , 0 , 0 , -1 ,  +0.0181, 0) )
+     f.con <- rbind( f.con, c(0 , 0 , 0 , 0 , -1 , -0.0629, 0) )
+    
+     f.dir <- c("<=", rep("<=",nrow(dt)), rep(">=",7), "<=", "<=", "<=", "<=", "<=", "<=", "<=", "<=", "<=", "<=")
+     
+     #, "<=", "<=", "<=", "<=", "<=", "<=", "<=", "<="
+     #, 0, 0, 0, 0, 0, 0, 0, 0
+     
+     f.rhs <- c(1, rep(0, nrow(dt)), rep(0, 7), 0, 0, 0 ,0, 0 ,0, 0 ,0, 0 ,0) 
+       
+     saida <- lp ("max", f.obj, f.con, f.dir, f.rhs) 
+     
+     eficiencias[k] <- saida$objval
+     pesos[k,]      <- saida$solution
+   }
+   
+   return( list(eff=eficiencias, pesos=pesos) )
+}  
+
+saida <- fDEA_SR(dados)
+
+#Nova coluna que recebe os dados gereados pela função
+dados$DEA.NEW <- saida$eff 
+saida$pesos
+
+```
+```{r ajusteDEAlpSolve}
+#Função modeloANEEL2020
+
+
+modeloANEEL2020 <- function(dt){
+  
+   eficiencias <- rep(NA, nrow(dt))
+   pesos       <- matrix(NA, nrow=nrow(dt), ncol=7)
+
+   for(k in 1:nrow(dt)){
+     produtos <- c("rede", "mva", "trafo", "mercado", "uc") 
+    
+     # Vetor de parametros: [pmso,rede,mva,trafo,mercado,uc,phi]
+     f.obj <- as.numeric( c(0, dt[k, produtos], 1) )
+     
+     f.con <- c(dt[k, "pmso"], rep(0,5), 0)
+     
+     f.con <- rbind(f.con, cbind(-dt[, "pmso"], dt[, produtos], 1))
+     
+     Identidade <- diag(rep(1,7))
+     
+     colnames(Identidade) <- colnames(f.con)
+     
+     f.con <- rbind(f.con, Identidade)
+     
+     #LETRA B 
+     
+     f.con <- rbind( f.con, c(-1 , 0 , 0 , 0 , 0 ,  +0.8109, 0) )
+     f.con <- rbind( f.con, c(-1 , 0 , 0 , 0 , 0 , -2.0012, 0) )
+     
+     f.con <- rbind( f.con, c(0 , -1 , 0 , 0 , 0 ,  +0.2683, 0) )
+     f.con <- rbind( f.con, c(0 , -1 , 0 , 0 , 0 , -1.2005, 0) )
+     
+     f.con <- rbind( f.con, c(0 , 0 , -1 , 0 , 0 ,  +0.0380, 0) )
+     f.con <- rbind( f.con, c(0 , 0 , -1 , 0 , 0 , -0.1527, 0) )
+     
+     f.con <- rbind( f.con, c(0 , 0 , 0 , -1 , 0 ,  +1.4007, 0) )
+     f.con <- rbind( f.con, c(0 , 0 , 0 , -1 , 0 , -29.8560, 0) )
+     
+     f.con <- rbind( f.con, c(0 , 0 , 0 , 0 , -1 ,  +0.0181, 0) )
+     f.con <- rbind( f.con, c(0 , 0 , 0 , 0 , -1 , -0.0629, 0) )
+    
+     f.dir <- c("<=", rep("<=",nrow(dt)), rep(">=",7), "<=", "<=", "<=", "<=", "<=", "<=", "<=", "<=", "<=", "<=")
+     
+     #, "<=", "<=", "<=", "<=", "<=", "<=", "<=", "<="
+     #, 0, 0, 0, 0, 0, 0, 0, 0
+     
+     f.rhs <- c(1, rep(0, nrow(dt)), rep(0, 7), 0, 0, 0 ,0, 0 ,0, 0 ,0, 0 ,0) 
+       
+     saida <- lp ("max", f.obj, f.con, f.dir, f.rhs) 
+     
+     eficiencias[k] <- saida$objval
+     pesos[k,]      <- saida$solution
+   }
+   
+   return( list(eff=eficiencias, pesos=pesos) )
+}  
+
+saida <- fDEA_SR(dados)
+
+#Nova coluna que recebe os dados gereados pela função
+dados$DEA.NEW <- saida$eff 
+saida$pesos
+
+```
+
+```{r ajusteDEAlpSolve}
+#Função modelo.ANEEL.W
+
+#■(■(■(0.8110@1.4007)&■(2.0012@29.8560))@■(■(0.2683&1.2005)@■(0.0181&0.0629)@■(0.0380&0.1527)))
+
+
+modeloANEELW <- function(dt, w){
+  
+   eficiencias <- rep(NA, nrow(dt))
+   pesos       <- matrix(NA, nrow=nrow(dt), ncol=7)
+
+   for(k in 1:nrow(dt)){
+     produtos <- c("rede", "mva", "trafo", "mercado", "uc") 
+    
+     # Vetor de parametros: [pmso,rede,mva,trafo,mercado,uc,phi]
+     f.obj <- as.numeric( c(0, dt[k, produtos], 1) )
+     
+     f.con <- c(dt[k, "pmso"], rep(0,5), 0)
+     
+     f.con <- rbind(f.con, cbind(-dt[, "pmso"], dt[, produtos], 1))
+     
+     Identidade <- diag(rep(1,7))
+     
+     colnames(Identidade) <- colnames(f.con)
+     
+     f.con <- rbind(f.con, Identidade)
+     
+     #LETRA B 
+     
+     f.con <- rbind( f.con, c(-1 , 0 , 0 , 0 , 0 ,  +0.8109, 0) )
+     f.con <- rbind( f.con, c(-1 , 0 , 0 , 0 , 0 , -2.0012, 0) )
+     
+     f.con <- rbind( f.con, c(0 , -1 , 0 , 0 , 0 ,  +0.2683, 0) )
+     f.con <- rbind( f.con, c(0 , -1 , 0 , 0 , 0 , -1.2005, 0) )
+     
+     f.con <- rbind( f.con, c(0 , 0 , -1 , 0 , 0 ,  +0.0380, 0) )
+     f.con <- rbind( f.con, c(0 , 0 , -1 , 0 , 0 , -0.1527, 0) )
+     
+     f.con <- rbind( f.con, c(0 , 0 , 0 , -1 , 0 ,  +1.4007, 0) )
+     f.con <- rbind( f.con, c(0 , 0 , 0 , -1 , 0 , -29.8560, 0) )
+     
+     f.con <- rbind( f.con, c(0 , 0 , 0 , 0 , -1 ,  +0.0181, 0) )
+     f.con <- rbind( f.con, c(0 , 0 , 0 , 0 , -1 , -0.0629, 0) )
+    
+     f.dir <- c("<=", rep("<=",nrow(dt)), rep(">=",7), "<=", "<=", "<=", "<=", "<=", "<=", "<=", "<=", "<=", "<=")
+     
+     #, "<=", "<=", "<=", "<=", "<=", "<=", "<=", "<="
+     #, 0, 0, 0, 0, 0, 0, 0, 0
+     
+     f.rhs <- c(1, rep(0, nrow(dt)), rep(0, 7), 0, 0, 0 ,0, 0 ,0, 0 ,0, 0 ,0) 
+       
+     saida <- lp ("max", f.obj, f.con, f.dir, f.rhs) 
+     
+     eficiencias[k] <- saida$objval
+     pesos[k,]      <- saida$solution
+   }
+   
+   return( list(eff=eficiencias, pesos=pesos) )
+}  
+
+saida <- fDEA_SR(dados)
+
+#Nova coluna que recebe os dados gereados pela função
+dados$DEA.NEW <- saida$eff 
+saida$pesos
+```
+
+
+
+Restrições B - 1
+
+$$ 0.8110 \le \frac{v_{rede}}{u} \le 2.0012 $$
+
+$$ 0.8110 \le \frac{v_{rede}}{u} $$
+$$ 0.8110 \cdot u \le v_{rede} $$
+$$ 0.8110 \cdot u - v_{rede} \le 0 $$
+$$ 0.8110 \cdot u - 1 \cdot v_{rede} \le 0 $$
+
+$$ \frac{v_{rede}}{u} \le 2.0012 $$
+$$ v_{rede} \le 2.0012 \cdot u $$
+$$ -2.0012 \cdot u + 1 \cdot v_{rede} \le  0$$
+Restrições B - 2
+$$ 0.2683 \le \frac{v_{trafo}}{u} \le 1.2005 $$
+$$ 0.2683 \le \frac{v_{trafo}}{u} $$
+$$ 0.2683 \cdot u  \le v_{trafo} $$
+$$ 0.2683 \cdot u - v_{trafo} \le 0 $$
+$$ 0.2683 \cdot u - 1 \cdot v_{trafo} \le 0 $$
+$$ \frac{v_{trafo}}{u} \le 1.2005 $$
+$$ v_{trafo} \le 1.2005 \cdot u $$
+$$ -2.0005 \cdot u + 1 \cdot v_{trafo} \le  0$$
+Restrições B - 3
+$$ 0.0380 \le \frac{v_{uc}}{u} \le 0.1527 $$
+$$ 0.0380 \le \frac{v_{uc}} u $$
+$$ 0.0380 \cdot u - v_{uc} \le 0 $$
+$$ 0.0380 \cdot u - 1 \cdot v_{uc} \le 0 $$
+$$  \frac{v_{uc}}{u} \le 0.1527 $$
+$$  v_{uc} \le 0.1527 \cdot u $$
+$$ -0.1527 \cdot u + 1 \cdot v_{uc} \le 0 $$
+Restrições B - 4
+$$ 1.4007 \le \frac{v_{mva}}{u} \le 29.8560 $$
+$$ 1.4007 \le \frac{v_{mva}}{u}  $$
+
+$$ 1.4007 \cdot u \le v_{mva}  $$
+
+$$ 1.4007 \cdot u - v_{mva} \le 0  $$
+$$ 1.4007 \cdot u - 1 \cdot v_{mva} \le 0  $$
+$$\frac{v_{mva}}{u} \le 29.8560 $$
+$$v_{mva} \le 29.8560 \cdot u $$
+$$0 \le 29.8560 \cdot u - v_{mva} $$
+$$-29.8560 \cdot u + v_{mva}  \le 0 $$
+$$-29.8560 \cdot u + 1 \cdot v_{mva}  \le 0 $$
+Restrições B - 5
+$$ 0.0181 \le \frac{v_{mercado}}{u} \le 0.0629 $$
+$$ 0.0181 \le \frac{v_{mercado}}{u} $$
+$$ 0.0181 \cdot u \le v_{mercado} $$
+$$ 0.0181 \cdot u - v_{mercado} \le 0 $$
+$$ 0.0181 \cdot u - 1 \cdot v_{mercado} \le 0 $$
+$$ \frac{v_{mercado}}{u} \le 0.0629 $$
+
+$$ v_{mercado} \le 0.0629 \cdot u $$
+
+$$ 0 \le 0.0629 \cdot u - v_{mercado} $$
+$$ -0.0629 \cdot u + v_{mercado} \le  0 $$
+$$ -0.0629 \cdot u + 1 \cdot v_{mercado} \le  0 $$
+
+
+
+
+

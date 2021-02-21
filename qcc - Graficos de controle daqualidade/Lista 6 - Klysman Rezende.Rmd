@@ -1,0 +1,101 @@
+---
+title: "Lista 6"
+author: "Klysman Rezende"
+date: "10 de fevereiro 2021"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#install.packages('tinytex')
+#tinytex::install_tinytex()
+```
+
+## Uso do pacote qcc para graficos de controle da qualidade
+
+```{r leitura}
+require(qcc)
+require(openxlsx)
+dados <- read.xlsx("2020_Lista6_Exercicio15_6.xlsx")
+```
+
+## Gerando um objeto do tipo qcc, gráfico de controle para xbar e resumo do dados.
+### grafico de controle para media.
+
+```{r objQcc 1}
+espessura <- with(dados, qcc.groups(espessura, sample))
+obj      <- qcc(espessura[1:18,], type="xbar")
+beyond.limits(obj)
+summary(obj)
+```
+
+### Beyond limits e Violating
+```{r}
+beyond.limits(obj)
+violating.runs(obj)
+
+```
+## Gerando um objeto do tipo qcc, gráfico de controle para R e resumo do dados.
+
+### Grafico de controle do R.
+
+```{r objQcc}
+espessura <- with(dados, qcc.groups(espessura, sample))
+obj      <- qcc(espessura[1:18,], type="R")
+out <- beyond.limits(obj)
+summary(obj)
+```
+
+## Retirando os pontos discrepantes
+```{r discrepantes amostra de tamanho 5}
+
+idx <- setdiff(1:18, out)
+obj <- qcc(espessura[idx,], type="xbar")
+beyond.limits(obj)
+```
+
+## Gerando um grafico de controle para as observacoes individuais
+
+```{r 2}
+obj <- qcc(espessura[1:18,], type="xbar.one")
+nova.espessura <-  qcc.groups(dados$espessura[1:90],
+                            1:90)
+obj <- qcc(nova.espessura, type="xbar.one")
+beyond.limits(obj)
+
+summary(obj)
+```
+## Retirando os pontos discrepantes
+
+```{r retirada dos xbar.one}
+
+newdados <- dados$espessura[ - beyond.limits(obj)]
+new.espessura <-  qcc.groups(newdados[1:89],
+                            1:89)
+obj <- qcc(new.espessura, type="xbar.one")
+beyond.limits(obj)
+```
+
+
+```{r novo controle teste}
+
+
+obj <- qcc(new.espessura, type="xbar.one",
+           newdata=newdados[70:124])
+# Pontos acima e abaixo dos limites de controle
+beyond.limits(obj)
+# Pontos dentro dos limites de controle que est?o violando as regras de sensibilidade
+violating.runs(obj)
+```
+
+## Grafico de controle da media para 7 amostras 19 a 25
+
+```{r objQcc_Media}
+espessura <- with(dados, qcc.groups(espessura, sample))
+obj      <- qcc(espessura[idx,], type="xbar",
+                newdata=espessura[19:25,])
+```
