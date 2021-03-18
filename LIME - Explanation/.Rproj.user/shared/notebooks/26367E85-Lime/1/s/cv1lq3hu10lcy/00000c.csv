@@ -1,0 +1,2 @@
+"0","model_rf <- caret::train(class ~ ., data = train_biopsy,method = ""rf"", #random forest"
+"0","trControl = trainControl(method = ""repeatedcv"", number = 10,repeats = 5, verboseIter = FALSE))"

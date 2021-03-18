@@ -1,0 +1,2 @@
+"0","explainer <- lime(train_biopsy, model_rf)"
+"2","MITOSES does not contain enough variance to use quantile binning. Using standard binning instead."
