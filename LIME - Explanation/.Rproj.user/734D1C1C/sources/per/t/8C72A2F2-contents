@@ -1,0 +1,128 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+# INSTALANDO PACOTES
+```{r}
+
+
+
+install.packages('lime')
+install.packages('MASS')
+install.packages("randomForest")
+install.packages('caret')
+install.packages('e1071')
+```
+
+# CARREGANDO AS BIBLIOTECAS
+```{r}
+
+library(lime)
+library(MASS)
+library(randomForest)
+library(caret)
+library(e1071)
+```
+
+# INTERPRETANDO E MANIPULANDO OS DADOS
+
+# Dataset: BIÓSPIA
+
+# A biópsia é um procedimento cirúrgico no qual se colhe uma amostra de tecidos ou células para posterior estudo em laboratório, tal como a evolução de determinada doença crônica. Uma biópsia é frequentemente usada para diagnosticar se um tumor é benigno ou maligno. font: Wikipédia
+
+```{r}
+data(biopsy)
+
+
+biopsy$ID <- NULL
+
+#names(biopsy) <- c('ESPESSURA DO AGLOMERADO', 'TAMANHO DA CÉLULA DE UNIFORMIDADE',
+#'FORMATO DA CÉLULA DE UNIFORMIDADE', 'ADESÃO MARGINAL','TAMANHO DA CÉLULA EPITELIAL ÚNICA',
+#'NÚCLEO NU', 'CROMATINA BRANDA', 'NUCLÉOLO NORMAL', 'MITOSES','CLASSE')
+
+names(biopsy) <- c('ESPESSURA DO AGLOMERADO', 'TAMANHO DA CÉLULA DE UNIFORMIDADE',
+'FORMATO DA CÉLULA DE UNIFORMIDADE', 'ADESÃO MARGINAL','TAMANHO DA CÉLULA EPITELIAL ÚNICA',
+'NÚCLEO NU', 'CROMATINA BRANDA', 'NUCLÉOLO NORMAL', 'MITOSES','class')
+
+sum(is.na(biopsy))
+
+
+biopsy <- na.omit(biopsy)
+sum(is.na(biopsy))
+
+head(biopsy, 10)
+```
+# DIVIDINDO O CONJUTO DE DADOS EM TREINO E TESTE
+
+```{r}
+## 75% do tamanho da amostra 
+
+smp_size <- floor(0.75 * nrow(biopsy))
+
+## Definir a semente para tornar sua partição reproduzível
+set.seed(123)
+train_ind <- sample(seq_len(nrow(biopsy)), size = smp_size)
+
+train_biopsy <- biopsy[train_ind, ]
+test_biopsy <- biopsy[-train_ind, ]
+
+
+```
+
+# DIMENSÕES DO CONJUTO
+```{r}
+dim(train_biopsy)
+dim(test_biopsy)
+```
+
+
+# CRIANDO O MODELO DE CLASSIFICAÇÃO USANDO A PACOTE CARET 
+# o pacote Caret contém funções para agilizar o processo de treinamento de modelos para regressão complexa e problemas de classificação.
+```{r}
+model_rf <- caret::train(class ~ ., data = train_biopsy,method = "rf", #random forest
+trControl = trainControl(method = "repeatedcv", number = 10,repeats = 5, verboseIter = FALSE))
+
+#number: Either the number of folds or number of resampling iterations
+#repeats: For repeated k-fold cross-validation only: the number of complete sets of folds to compute
+#verboseIter: A logical for printing a training log.
+
+```
+
+# RESUMO DO MODELO
+```{r}
+model_rf
+```
+
+
+# APLICANDO O MODELO NO CONJUTNO DE TESTE E SEU RESUMO
+```{r}
+biopsy_rf_pred <- predict(model_rf, test_biopsy)
+confusionMatrix(biopsy_rf_pred, as.factor(test_biopsy$class))
+```
+
+# FUNÇÃO PARA TREINAR O LIME 
+```{r}
+explainer <- lime(train_biopsy, model_rf)
+```
+# Uma Visão Geral condensada De todas As explicações selecionadas
+```{r}
+explanation <- explain(test_biopsy[15:20, ], explainer, n_labels = 2, n_features = 5)
+#plot_features(explanation, ncol = 1)
+plot_explanations(explanation)
+
+```
+
+# Os recursos que têm correlações positivas com o destino são mostrados em azul, os recursos negativamente correlacionados são mostrados em vermelho.
+# Formato da célula de uniformidade <= 1,5: valores mais baixos se correlacionam positivamente com um tumor benigno.
+# Núcleos nus <= 7: valores inferiores de núcleos nus se correlacionam negativamente com um tumor maligno.
+# Uniformidade da forma da célula> 5,0: valores altos se correlacionam positivamente com um tumor maligno (quanto maior esse valor, maiores as chances de o tumor ser maligno).
+# Espessura de aglomeração> 6,0: valores elevados de espessura de aglomerado correlacionam-se positivamente com um tumor maligno.
+
+```{r}
+explanation <- explain(test_biopsy[93, ], explainer, n_labels = 1, n_features = 10)
+plot_features(explanation)
+```
+
+
